@@ -39,8 +39,11 @@ section{padding:100px 9%}
 .card h3{font:800 29px 'Barlow Condensed';color:var(--gold);margin:15px 0}
 .card p{font-size:12px;line-height:1.8;color:#aaa}
 .creators{background:#090909}
+.creator-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,600px));gap:20px}
 .creator{max-width:600px;padding:35px;background:#171717;border:1px solid #80691e;display:flex;align-items:center;gap:25px}
-.avatar{height:100px;width:100px;border-radius:50%;background:linear-gradient(145deg,#f8d54c,#654800);display:grid;place-items:center;color:#111;font:900 30px 'Barlow Condensed'}
+.avatar{height:100px;width:100px;flex:0 0 100px;border-radius:50%;background:linear-gradient(145deg,#f8d54c,#654800);display:grid;place-items:center;color:#111;font:900 30px 'Barlow Condensed';overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.cardbody{min-width:0}
 .creator h3{font:900 34px 'Barlow Condensed'}
 .creator p{color:#aaa;font-size:12px;margin:8px 0 18px}
 .versus{background:radial-gradient(circle at 80%,#5e490d55,transparent 40%),#111;display:grid;grid-template-columns:1fr 1fr;align-items:center}
@@ -112,13 +115,15 @@ section{padding:75px 7%}
 <section class="creators" id="creators">
 <div class="tag">02 / OUR TALENT</div>
 <h2 class="heading">MEET OUR <span>CREATORS.</span></h2>
-<div class="creator">
-<div class="avatar">SHIVA</div>
-<div>
+<div id="creator-grid" class="creator-grid">
+<article class="creator">
+<div class="avatar"><img src="https://yt3.googleusercontent.com/4Xp4R8tPpQmb--5ZlxmQhHCzAd3-ciyeyMZ34Vfgw0R5cfi8UR9xuc28p4tiblQbEaFYTke3Rw=s900-c-k-c0x00ffffff-no-rj" alt="SHIVA IS LIVE" loading="lazy" referrerpolicy="no-referrer"></div>
+<div class="cardbody">
 <h3>SHIVA IS LIVE</h3>
 <p>Gaming • Streaming • Content Creation</p>
-<a class="btn primary" href="https://youtube.com/@shivaislive-07" target="_blank">VISIT CHANNEL ↗</a>
+<a class="btn primary" href="https://youtube.com/@shivaislive-07" target="_blank" rel="noopener">VISIT CHANNEL ↗</a>
 </div>
+</article>
 </div>
 </section>
 
