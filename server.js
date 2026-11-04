@@ -12,9 +12,14 @@ const dir=path.dirname(fileURLToPath(import.meta.url)), app=express(), port=Numb
 const keys=['SUPABASE_URL','SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY'];
 const ready=keys.every(k=>process.env[k]);
 const db=ready?createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}):null;
-app.disable('x-powered-by'); if(process.env.TRUST_PROXY==='1')app.set('trust proxy',1);
+app.disable('x-powered-by'); if(process.env.TRUST_PROXY==='1'||process.env.RENDER||process.env.RAILWAY_ENVIRONMENT||process.env.FLY_APP_NAME||process.env.VERCEL)app.set('trust proxy',1);
+const allowedOrigins=()=>String(process.env.APP_ORIGIN||'').split(',').map(x=>x.trim()).filter(Boolean);
+const isLocalHost=h=>['localhost','127.0.0.1','[::1]','::1'].includes(h);
+function originAllowed(req,origin){if(!origin)return true;if(allowedOrigins().includes(origin))return true;try{const u=new URL(origin);if(isLocalHost(u.hostname))return true;const host=String(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim();if(host&&u.host===host)return true;}catch{}return false;}
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],fontSrc:["'self'",'https://fonts.gstatic.com','data:'],imgSrc:["'self'",'data:','https:'],connectSrc:["'self'",'https://*.supabase.co'],objectSrc:["'none'"],frameAncestors:["'none'"]}},crossOriginEmbedderPolicy:false}));
-app.use(compression()); app.use(cors({origin:(o,cb)=>{const allowed=(process.env.APP_ORIGIN||`http://localhost:${port}`).split(',').map(x=>x.trim());cb(!o||allowed.includes(o)?null:new Error('Origin not allowed'),!o||allowed.includes(o));},methods:['GET','POST','PATCH','DELETE'],allowedHeaders:['Content-Type','Authorization']}));
+app.use(compression());
+app.use((req,res,next)=>{const o=req.headers.origin;if(o&&!originAllowed(req,o))return res.status(403).json({error:'Origin not allowed'});next();});
+app.use(cors({origin:true,methods:['GET','POST','PATCH','DELETE'],allowedHeaders:['Content-Type','Authorization']}));
 app.use(express.json({limit:'32kb'})); app.use('/api/',rateLimit({windowMs:15*60*1000,limit:150,standardHeaders:'draft-8',legacyHeaders:false}));
 const fail=res=>res.status(503).json({error:'Backend not configured. Follow README.md.'});
 const applicationSchema=z.object({full_name:z.string().trim().min(2).max(80),email:z.email().max(160),age:z.number().int().min(13).max(99),game:z.string().trim().min(2).max(80),role:z.string().trim().min(2).max(80),experience:z.string().max(1500).optional().default(''),youtube_url:z.string().max(300).optional().default(''),discord_tag:z.string().max(80).optional().default(''),availability:z.string().max(300).optional().default('')});
