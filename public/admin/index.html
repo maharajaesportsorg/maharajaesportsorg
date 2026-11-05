@@ -1,1 +1,60 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maharaja Team Dashboard</title><link rel="stylesheet" href="/admin/admin.css"></head><body><main class="shell"><header><a href="/" class="brand">MAHARAJA <b>ESPORTS</b></a><span>PRIVATE TEAM DASHBOARD</span></header><section id="login" class="panel login"><p class="goldtext">TEAM ACCESS</p><h1>WELCOME BACK.</h1><p>Sign in with the email invited by the Maharaja team owner.</p><form id="login-form"><label>Email<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button class="gold">SIGN IN</button></form><p id="login-msg" class="message"></p><a href="/">← Back to website</a></section><section id="dashboard" hidden><div class="dashhead"><div><p class="goldtext">MAHARAJA ESPORTS & CREATIVES</p><h1>TEAM CONTROL.</h1><p id="identity"></p></div><button id="logout" class="ghost">SIGN OUT</button></div><nav class="tabs"><button class="active" data-tab="applications">APPLICATIONS</button><button data-tab="creators">CREATORS</button><button data-tab="team" id="team-tab">TEAM ACCESS</button></nav><section class="panel tab-panel" id="applications"><div class="panelhead"><h2>APPLICATIONS</h2><select id="status-filter"><option value="">All statuses</option><option>pending</option><option>reviewing</option><option>accepted</option><option>rejected</option></select></div><div id="application-list"></div></section><section class="panel tab-panel" id="creators" hidden><div class="panelhead"><h2>CREATOR ROSTER</h2><button id="add-creator" class="gold">+ ADD CREATOR</button></div><p class="hint">Creator avatars and public channel statistics are fetched from YouTube when a channel is added or refreshed.</p><div id="creator-list"></div></section><section class="panel tab-panel" id="team" hidden><div class="panelhead"><h2>TEAM ACCESS</h2></div><p class="hint">Invite staff. Admins can manage creators and team access. Editors can review applications.</p><form id="invite-form" class="inline"><input name="email" type="email" placeholder="teammate@example.com" required><select name="role"><option value="editor">Editor — applications</option><option value="admin">Admin — full management</option></select><button class="gold">SEND INVITE</button></form><div id="team-list"></div></section></section></main><script src="/admin/admin.js" defer></script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maharaja Team Dashboard</title><link rel="stylesheet" href="/admin/admin.css"></head><body><main class="shell"><header><a href="/" class="brand">MAHARAJA <b>ESPORTS</b></a><span>PRIVATE TEAM DASHBOARD</span></header><section id="login" class="panel login"><p class="goldtext">TEAM ACCESS</p><h1>WELCOME BACK.</h1><p>Sign in with the email invited by the Maharaja team owner.</p><form id="login-form"><label>Email<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button class="gold">SIGN IN</button></form><p id="login-msg" class="message"></p><a href="/">← Back to website</a></section><section id="dashboard" hidden><div class="dashhead"><div><p class="goldtext">MAHARAJA ESPORTS & CREATIVES</p><h1>TEAM CONTROL.</h1><p id="identity"></p></div><button id="logout" class="ghost">SIGN OUT</button></div><nav class="tabs"><button class="active" data-tab="applications">APPLICATIONS</button><button data-tab="creators">CREATORS</button><button data-tab="team" id="team-tab">TEAM ACCESS</button><button data-tab="discord" id="discord-tab">DISCORD BOT</button></nav><section class="panel tab-panel" id="applications"><div class="panelhead"><h2>APPLICATIONS</h2><select id="status-filter"><option value="">All statuses</option><option>pending</option><option>reviewing</option><option>accepted</option><option>rejected</option></select></div><div id="application-list"></div></section><section class="panel tab-panel" id="creators" hidden><div class="panelhead"><h2>CREATOR ROSTER</h2><button id="add-creator" class="gold">+ ADD CREATOR</button></div><p class="hint">Creator avatars and public channel statistics are fetched from YouTube when a channel is added or refreshed.</p><div id="creator-list"></div></section><section class="panel tab-panel" id="team" hidden><div class="panelhead"><h2>TEAM ACCESS</h2></div><p class="hint">Invite staff. Admins can manage creators and team access. Editors can review applications.</p><form id="invite-form" class="inline"><input name="email" type="email" placeholder="teammate@example.com" required><select name="role"><option value="editor">Editor — applications</option><option value="admin">Admin — full management</option></select><button class="gold">SEND INVITE</button></form><div id="team-list"></div></section>
+<section class="panel tab-panel" id="discord" hidden>
+ <div class="panelhead"><div><p class="goldtext">MAHARAJA AUTOMATION</p><h2>DISCORD BOT CONTROL</h2></div><span id="discord-status" class="bot-status">CHECKING BOT…</span></div>
+ <p class="hint">Manage your connected Discord server from this existing Maharaja admin panel. Bot token stays on the server, never in the browser.</p>
+ <section class="discord-card">
+  <h3>01 / BOT & WELCOME SETTINGS</h3>
+  <form id="discord-settings-form" class="discord-form">
+   <label>Discord Server ID<input name="guild_id" placeholder="Your Discord server ID" required></label>
+   <label>Welcome Channel ID<input name="welcome_channel_id" placeholder="Channel ID where new members are welcomed"></label>
+   <label class="wide">Welcome Message<textarea name="welcome_message" rows="3" placeholder="Welcome {user} to {server}! Member #{memberCount}"></textarea><small>Variables: {user}, {server}, {memberCount}</small></label>
+   <label>Ticket Category ID<input name="ticket_category_id" placeholder="Optional category ID"></label>
+   <label>Ticket Log Channel ID<input name="ticket_log_channel_id" placeholder="Optional staff log channel ID"></label>
+   <label>Ticket Support Role ID<input name="ticket_support_role_id" placeholder="Staff role that can view tickets"></label>
+   <label>Ticket Panel Channel ID<input name="ticket_panel_channel_id" placeholder="Channel for the ticket panel"></label>
+   <label class="checkline"><input type="checkbox" name="welcome_enabled"> Enable welcome messages</label>
+   <div class="wide"><button class="gold">SAVE BOT SETTINGS</button></div>
+  </form>
+ </section>
+ <section class="discord-card">
+  <h3>02 / SEND ANNOUNCEMENT</h3>
+  <form id="discord-announcement-form" class="discord-form">
+   <label>Channel ID<input name="channel_id" required placeholder="Discord text channel ID"></label>
+   <label>Announcement Title<input name="title" required maxlength="256" placeholder="Maharaja Esports Announcement"></label>
+   <label class="wide">Message<textarea name="message" rows="4" required placeholder="Write your announcement..."></textarea></label>
+   <div class="wide"><button class="gold">SEND ANNOUNCEMENT</button></div>
+  </form>
+ </section>
+ <section class="discord-card">
+  <h3>03 / CREATE GIVEAWAY</h3>
+  <form id="discord-giveaway-form" class="discord-form">
+   <label>Channel ID<input name="channel_id" required placeholder="Discord text channel ID"></label>
+   <label>Prize<input name="prize" required placeholder="Example: Discord Nitro"></label>
+   <label>Number of Winners<input name="winners_count" type="number" min="1" max="20" value="1" required></label>
+   <label>Duration (minutes)<input name="duration_minutes" type="number" min="1" max="43200" value="1440" required></label>
+   <div class="wide"><button class="gold">START GIVEAWAY</button></div>
+  </form>
+ </section>
+ <section class="discord-card">
+  <h3>04 / TICKET PANEL</h3>
+  <form id="discord-ticket-form" class="discord-form">
+   <label>Channel ID<input name="channel_id" required placeholder="Where members see the ticket panel"></label>
+   <label>Panel Title<input name="title" value="Need help? Open a ticket" required></label>
+   <label class="wide">Description<textarea name="description" rows="3" required>Click the button below to create a private support ticket. Our team will help you shortly.</textarea></label>
+   <div class="wide"><button class="gold">PUBLISH TICKET PANEL</button></div>
+  </form>
+ </section>
+ <section class="discord-card">
+  <h3>05 / REACTION ROLES (BUTTON ROLES)</h3>
+  <form id="discord-role-form" class="discord-form">
+   <label>Channel ID<input name="channel_id" required placeholder="Discord text channel ID"></label>
+   <label>Role ID<input name="role_id" required placeholder="Discord role ID"></label>
+   <label>Button Label<input name="label" required maxlength="80" placeholder="Valorant Player"></label>
+   <label>Emoji<input name="emoji" maxlength="32" value="🎮"></label>
+   <div class="wide"><button class="gold">PUBLISH ROLE BUTTON</button></div>
+  </form>
+  <p class="hint">The bot needs Manage Roles, and its highest role must be above every role it assigns.</p>
+ </section>
+ <p id="discord-message" class="message" aria-live="polite"></p>
+</section>
+</section></main><script src="/admin/admin.js" defer></script></body></html>
