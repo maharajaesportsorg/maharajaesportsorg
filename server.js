@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {rateLimit} from 'express-rate-limit';
 import {createClient} from '@supabase/supabase-js';
 import {z} from 'zod';
+import {startDiscordBot,discordStatus,sendAnnouncement,createGiveaway,createTicketPanel,createReactionRole} from './discord-bot.js';
 const dir=path.dirname(fileURLToPath(import.meta.url)), app=express(), port=Number(process.env.PORT||3000);
 const keys=['SUPABASE_URL','SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY'];
 const ready=keys.every(k=>process.env[k]);
@@ -26,11 +27,53 @@ const applicationSchema=z.object({full_name:z.string().trim().min(2).max(80),ema
 const creatorSchema=z.object({name:z.string().trim().min(2).max(80),youtube_channel_id:z.string().regex(/^UC[a-zA-Z0-9_-]{22}$/),youtube_url:z.url().max(300),role:z.string().max(80).optional().default('Creator'),bio:z.string().max(500).optional().default(''),featured:z.boolean().optional().default(false),sort_order:z.number().int().min(0).max(9999).optional().default(100)});
 async function auth(req,res,next){if(!db)return fail(res);const token=req.headers.authorization?.replace(/^Bearer\s+/i,'');if(!token)return res.status(401).json({error:'Sign in required.'});const {data,error}=await db.auth.getUser(token);if(error||!data.user)return res.status(401).json({error:'Session expired.'});const {data:p}=await db.from('team_members').select('role,active').eq('user_id',data.user.id).maybeSingle();if(!p?.active||!['owner','admin','editor'].includes(p.role))return res.status(403).json({error:'Not authorised for team dashboard.'});req.user=data.user;req.role=p.role;next();}
 const manager=(req,res,next)=>['owner','admin'].includes(req.role)?next():res.status(403).json({error:'Admin permission required.'});
+const discordId=z.string().regex(/^\d{17,20}$/,'Enter a valid Discord ID.');
+const discordSettingsSchema=z.object({guild_id:discordId,welcome_enabled:z.boolean(),welcome_channel_id:z.union([discordId,z.literal('')]).default(''),welcome_message:z.string().max(1800).default('Welcome {user} to **{server}**! You are member #{memberCount}.'),ticket_category_id:z.union([discordId,z.literal('')]).default(''),ticket_panel_channel_id:z.union([discordId,z.literal('')]).default(''),ticket_log_channel_id:z.union([discordId,z.literal('')]).default(''),ticket_support_role_id:z.union([discordId,z.literal('')]).default('')});
 async function yt(id){if(!process.env.YOUTUBE_API_KEY)throw Error('YOUTUBE_API_KEY missing');const u=new URL('https://www.googleapis.com/youtube/v3/channels');u.search=new URLSearchParams({part:'snippet,statistics',id,key:process.env.YOUTUBE_API_KEY});const r=await fetch(u);const j=await r.json();if(!r.ok||!j.items?.[0])throw Error('YouTube channel not found or API request failed');const c=j.items[0],t=c.snippet?.thumbnails||{},s=c.statistics||{};return {youtube_title:c.snippet?.title||null,avatar_url:t.high?.url||t.medium?.url||t.default?.url||null,subscriber_count:s.hiddenSubscriberCount?null:Number(s.subscriberCount||0),video_count:Number(s.videoCount||0),view_count:Number(s.viewCount||0),youtube_synced_at:new Date().toISOString()};}
 app.get('/api/health',(_,res)=>res.json({status:'ok',configured:ready}));
 app.get('/api/creators',async(_,res)=>{if(!db)return fail(res);const {data,error}=await db.from('creators').select('id,name,role,bio,youtube_url,avatar_url,subscriber_count,video_count,view_count,featured').eq('published',true).order('sort_order');if(error)return res.status(500).json({error:'Could not load creators'});res.json({creators:data||[]});});
 app.post('/api/applications',rateLimit({windowMs:3600000,limit:5}),async(req,res)=>{if(!db)return fail(res);if(req.body?.website)return res.status(201).json({ok:true});const p=applicationSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Check the application fields and try again.',details:p.error.issues.map(x=>({field:x.path.join('.'),message:x.message}))});const {error}=await db.from('applications').insert({...p.data,status:'pending'});if(error){console.error(error.message);return res.status(500).json({error:'Could not save application. Try again later.'});}res.status(201).json({ok:true,message:'Application submitted.'});});
 app.get('/api/admin/me',auth,(req,res)=>res.json({user:{id:req.user.id,email:req.user.email},role:req.role}));
+
+app.get('/api/admin/discord/status',auth,manager,(_,res)=>res.json(discordStatus()));
+app.get('/api/admin/discord/settings',auth,manager,async(_,res)=>{
+ const {data,error}=await db.from('discord_settings').select('*').eq('id',1).maybeSingle();
+ if(error)return res.status(500).json({error:'Could not load Discord settings. Run the Discord SQL migration first.'});
+ res.json({settings:data||{id:1,guild_id:'',welcome_enabled:false,welcome_channel_id:'',welcome_message:'Welcome {user} to **{server}**! You are member #{memberCount}.',ticket_category_id:'',ticket_panel_channel_id:'',ticket_log_channel_id:''}});
+});
+app.put('/api/admin/discord/settings',auth,manager,async(req,res)=>{
+ const p=discordSettingsSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid Discord settings.',details:p.error.issues});
+ const {data,error}=await db.from('discord_settings').upsert({id:1,...p.data,updated_at:new Date().toISOString()}).select().single();
+ if(error)return res.status(500).json({error:'Could not save Discord settings. Check that the Discord SQL migration has been run.'});
+ res.json({settings:data});
+});
+app.post('/api/admin/discord/announcement',auth,manager,async(req,res)=>{
+ const p=z.object({channel_id:discordId,title:z.string().trim().min(1).max(256),message:z.string().trim().min(1).max(3500)}).safeParse(req.body);
+ if(!p.success)return res.status(400).json({error:'Enter a valid channel, title and message.'});
+ const {data:cfg}=await db.from('discord_settings').select('guild_id').eq('id',1).maybeSingle();if(!cfg?.guild_id)return res.status(400).json({error:'Save your Discord server ID in Bot Settings first.'});
+ try{await sendAnnouncement({guildId:cfg.guild_id,channelId:p.data.channel_id,title:p.data.title,message:p.data.message});res.status(201).json({ok:true});}catch(e){res.status(400).json({error:e.message});}
+});
+app.post('/api/admin/discord/giveaways',auth,manager,async(req,res)=>{
+ const p=z.object({channel_id:discordId,prize:z.string().trim().min(2).max(180),winners_count:z.number().int().min(1).max(20),duration_minutes:z.number().int().min(1).max(43200)}).safeParse(req.body);
+ if(!p.success)return res.status(400).json({error:'Check giveaway details. Duration must be 1–43200 minutes.'});
+ const {data:cfg}=await db.from('discord_settings').select('guild_id').eq('id',1).maybeSingle();
+ if(!cfg?.guild_id)return res.status(400).json({error:'Save your Discord server ID in Bot Settings first.'});
+ try{const result=await createGiveaway({guildId:cfg.guild_id,channelId:p.data.channel_id,prize:p.data.prize,winnersCount:p.data.winners_count,durationMinutes:p.data.duration_minutes,createdBy:req.user.id});res.status(201).json(result);}catch(e){res.status(400).json({error:e.message});}
+});
+app.post('/api/admin/discord/ticket-panel',auth,manager,async(req,res)=>{
+ const p=z.object({channel_id:discordId,title:z.string().trim().min(1).max(256),description:z.string().trim().min(1).max(3000)}).safeParse(req.body);
+ if(!p.success)return res.status(400).json({error:'Enter a valid channel, title and description.'});
+ const {data:cfg}=await db.from('discord_settings').select('guild_id').eq('id',1).maybeSingle();if(!cfg?.guild_id)return res.status(400).json({error:'Save your Discord server ID in Bot Settings first.'});
+ try{const result=await createTicketPanel({guildId:cfg.guild_id,...p.data});res.status(201).json(result);}catch(e){res.status(400).json({error:e.message});}
+});
+app.post('/api/admin/discord/reaction-roles',auth,manager,async(req,res)=>{
+ const p=z.object({channel_id:discordId,role_id:discordId,label:z.string().trim().min(1).max(80),emoji:z.string().max(32).optional().default('🎮')}).safeParse(req.body);
+ if(!p.success)return res.status(400).json({error:'Enter valid channel and role IDs.'});
+ const {data:cfg}=await db.from('discord_settings').select('guild_id').eq('id',1).maybeSingle();
+ if(!cfg?.guild_id)return res.status(400).json({error:'Save your Discord server ID in Bot Settings first.'});
+ try{const result=await createReactionRole({guildId:cfg.guild_id,...p.data});res.status(201).json(result);}catch(e){res.status(400).json({error:e.message});}
+});
+
 app.get('/api/admin/dashboard',auth,async(_,res)=>{const [a,c]=await Promise.all([db.from('applications').select('id,status,created_at',{count:'exact'}).order('created_at',{ascending:false}).limit(250),db.from('creators').select('id,name,published,sort_order').order('sort_order')]);if(a.error||c.error)return res.status(500).json({error:'Dashboard query failed'});res.json({applications:a.data||[],applicationCount:a.count||0,creators:c.data||[]});});
 app.get('/api/admin/applications',auth,async(req,res)=>{let q=db.from('applications').select('*').order('created_at',{ascending:false}).limit(250);if(['pending','reviewing','accepted','rejected'].includes(req.query.status))q=q.eq('status',req.query.status);const {data,error}=await q;if(error)return res.status(500).json({error:'Could not load applications'});res.json({applications:data||[]});});
 app.patch('/api/admin/applications/:id',auth,async(req,res)=>{const p=z.object({status:z.enum(['pending','reviewing','accepted','rejected']),admin_notes:z.string().max(1500).optional()}).safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid review update'});const {data,error}=await db.from('applications').update({...p.data,reviewed_by:req.user.id,reviewed_at:new Date().toISOString()}).eq('id',req.params.id).select('id,status,admin_notes,reviewed_at').single();if(error)return res.status(500).json({error:'Could not update application'});res.json({application:data});});
@@ -43,4 +86,5 @@ app.post('/api/admin/team',auth,manager,async(req,res)=>{const p=z.object({email
 app.patch('/api/admin/team/:id',auth,manager,async(req,res)=>{const p=z.object({role:z.enum(['admin','editor']).optional(),active:z.boolean().optional()}).safeParse(req.body);if(!p.success||!Object.keys(p.data).length)return res.status(400).json({error:'Invalid team update'});const {error}=await db.from('team_members').update(p.data).eq('user_id',req.params.id).neq('role','owner');if(error)return res.status(500).json({error:'Team update failed'});res.json({ok:true});});
 app.use(express.static(path.join(dir,'public')));app.get('/admin',(req,res)=>res.sendFile(path.join(dir,'public/admin/index.html')));app.get('/{*splat}',(req,res,next)=>req.path.startsWith('/api/')?res.status(404).json({error:'Not found'}):res.sendFile(path.join(dir,'public/index.html'),e=>e&&next(e)));
 app.use((e,req,res,next)=>{console.error(e);res.status(500).json({error:'Unexpected server error'});});
+if(db)startDiscordBot(db);
 app.listen(port,()=>console.log(`Maharaja Esports listening on ${port}`));
