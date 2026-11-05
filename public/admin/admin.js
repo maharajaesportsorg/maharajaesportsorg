@@ -15,11 +15,30 @@ async function loadTeam() { try { const d = await api('/api/admin/team'); $('#te
 function discordNotice(message, bad=false) {
   const el=$('#discord-message'); el.textContent=message; el.classList.toggle('error',bad);
 }
-async function discordSubmit(form, endpoint, convert=Object.fromEntries) {
-  const raw=Object.fromEntries(new FormData(form));
-  const payload=convert(raw);
-  try { await api(endpoint,{method:'POST',body:JSON.stringify(payload)}); discordNotice('Done. The Discord action was completed.'); form.reset(); }
-  catch(e) { discordNotice(e.message,true); }
+async function discordSubmit(form, endpoint, convert = data => data) {
+  const button = form.querySelector('button[type="submit"], button:not([type])');
+
+  try {
+    if (button) button.disabled = true;
+
+    const raw = Object.fromEntries(new FormData(form).entries());
+    const payload = convert(raw);
+
+    await api(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    discordNotice('Success! Discord action completed.');
+    form.reset();
+
+  } catch (error) {
+    console.error('Discord request failed:', error);
+    discordNotice(error.message || 'Request failed', true);
+
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 async function loadDiscord() {
   try {
