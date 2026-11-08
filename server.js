@@ -87,4 +87,6 @@ app.patch('/api/admin/team/:id',auth,manager,async(req,res)=>{const p=z.object({
 app.use(express.static(path.join(dir,'public')));app.get('/admin',(req,res)=>res.sendFile(path.join(dir,'public/admin/index.html')));app.get('/{*splat}',(req,res,next)=>req.path.startsWith('/api/')?res.status(404).json({error:'Not found'}):res.sendFile(path.join(dir,'public/index.html'),e=>e&&next(e)));
 app.use((e,req,res,next)=>{console.error(e);res.status(500).json({error:'Unexpected server error'});});
 if(db)startDiscordBot(db);
-app.listen(port,()=>console.log(`Maharaja Esports listening on ${port}`));
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Maharaja Esports listening on ${port}`);
+});
