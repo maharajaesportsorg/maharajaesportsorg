@@ -86,7 +86,14 @@ app.post('/api/admin/team',auth,manager,async(req,res)=>{const p=z.object({email
 app.patch('/api/admin/team/:id',auth,manager,async(req,res)=>{const p=z.object({role:z.enum(['admin','editor']).optional(),active:z.boolean().optional()}).safeParse(req.body);if(!p.success||!Object.keys(p.data).length)return res.status(400).json({error:'Invalid team update'});const {error}=await db.from('team_members').update(p.data).eq('user_id',req.params.id).neq('role','owner');if(error)return res.status(500).json({error:'Team update failed'});res.json({ok:true});});
 app.use(express.static(path.join(dir,'public')));app.get('/admin',(req,res)=>res.sendFile(path.join(dir,'public/admin/index.html')));app.get('/{*splat}',(req,res,next)=>req.path.startsWith('/api/')?res.status(404).json({error:'Not found'}):res.sendFile(path.join(dir,'public/index.html'),e=>e&&next(e)));
 app.use((e,req,res,next)=>{console.error(e);res.status(500).json({error:'Unexpected server error'});});
-if(db)startDiscordBot(db);
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Maharaja Esports listening on ${port}`);
-});
+
+if (!process.env.VERCEL) {
+  if (db) startDiscordBot(db);
+
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Maharaja Esports listening on ${port}`);
+  });
+}
+
+export default app;
+
